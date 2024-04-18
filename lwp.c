@@ -18,3 +18,27 @@ lwp_start() {
 lwp_yield() {
     //uses swap_rfiles to load its content
 }
+
+lwp_exit() {
+    //terminates calling thread and switches to another thread if any
+}
+
+lwp_gettid(void) {
+    //return thread id of the calling LWP
+}
+
+lwp_wait(int *status) {
+    //waits for the thread with the given id to terminate
+}
+
+lwp_set_scheduler(scheduler fun) {
+    //installs a new scheduling function
+}
+
+lwp_get_scheduler(void) {
+    //find out what the current scheduler is
+}
+
+thread tid2thread(tid_t tid) {
+    //maps a thread id to a context
+}
