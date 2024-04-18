@@ -1,4 +1,6 @@
-thread head = NULL;
+#include <stdio.h>
+#include "lwp.h"
+// thread head = NULL;
 
 void init_rr() {
 
@@ -24,5 +26,8 @@ int qlen_rr() {
     return 0;
 }
 
-
-rr = {NULL, NULL, admit_rr, remove_rr, next_rr, qlen_rr};
+struct scheduler rr_publish = {NULL, NULL, admit_rr, remove_rr, next_rr, qlen_rr};
+scheduler RoundRobin = &rr_publish;
+// Calling:
+// thread nxt;
+// nxt = RoundRobin->next()
