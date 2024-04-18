@@ -5,21 +5,22 @@
 
 scheduler s = &rr;
 
-lwp_create() {
+lwp_create(lwpfun function, void *argument) {
     //most of the work will be done here.
     //creates a new thread and sets up its context 
     //so that when it is selected by the scheduler to run
 }
 
-lwp_start() {
-
+lwp_start(void) {
+    //converts the calling thread into a LWP and lwp_yield()s to whichever 
+    //thread is selected by the scheduler
 }
 
-lwp_yield() {
+lwp_yield(void) {
     //uses swap_rfiles to load its content
 }
 
-lwp_exit() {
+lwp_exit(int exitval) {
     //terminates calling thread and switches to another thread if any
 }
 
@@ -31,7 +32,7 @@ lwp_wait(int *status) {
     //waits for the thread with the given id to terminate
 }
 
-lwp_set_scheduler(scheduler fun) {
+lwp_set_scheduler(scheduler sched) {
     //installs a new scheduling function
 }
 
