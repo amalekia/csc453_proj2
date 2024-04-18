@@ -1,14 +1,18 @@
-#include stdio.h
-#include lwp.h
-#include rr.h
+#include <stdio.h>
+#include <pthread.h>
+#include "lwp.h"
+#include "rr.h"
 
 
 scheduler s = &rr;
 
-lwp_create(lwpfun function, void *argument) {
+tid_t lwp_create(lwpfun function, void *argument) {
     //most of the work will be done here.
     //creates a new thread and sets up its context 
     //so that when it is selected by the scheduler to run
+
+    pthread_t tid;
+    pthread_create(&tid, NULL, function, argument);
 }
 
 lwp_start(void) {
