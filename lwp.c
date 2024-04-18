@@ -1,5 +1,4 @@
 #include <stdio.h>
-#include <pthread.h>
 #include "lwp.h"
 #include "rr.h"
 
@@ -11,7 +10,7 @@ tid_t lwp_create(lwpfun function, void *argument) {
     //creates a new thread and sets up its context 
     //so that when it is selected by the scheduler to run
 
-    pthread_t tid;
+    tid_t tid;
     pthread_create(&tid, NULL, function, argument);
 }
 
