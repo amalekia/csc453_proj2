@@ -10,7 +10,7 @@ typedef struct queueNode{
 
 node *head;
 node *tail;
-int qlen;
+int qlen; // qlen of zero means empty, qlen 1 being just the head, so head = tail, and so on
 
 void init_rr() {
     head = NULL;
@@ -18,11 +18,18 @@ void init_rr() {
     qlen = 0;
 }
 
-// Need to free node by node
 void shutdown_rr() {
+    node *current = head;
+    while (current != NULL)
+    {
+        node *target = current;
+        current = current->next;
+        free(target);
+    }
     head = NULL;
     tail = NULL;
     qlen = 0;
+    return;
 }
 
 // Done for now, needs testing
@@ -56,13 +63,14 @@ void remove_rr(thread removing){
     }
 
     node *current = head;
-    while (current->next != NULL)
+    while (current != NULL)
     {
         if (current->next->theThread == removing)
         {
             node *removalTarget = current->next;
             current->next = current->next->next;
             free(removalTarget);
+            qlen--;
             return;
         }
         current = current->next;
@@ -71,7 +79,13 @@ void remove_rr(thread removing){
 }
 
 thread next_rr() {
-    return NULL;
+    if (head == NULL || qlen == 0)
+    {
+        return NULL;
+    }
+    thread nextThread = head->theThread;
+    head = head->next;
+    return nextThread;
 }
 
 int qlen_rr() {
@@ -88,27 +102,50 @@ scheduler RoundRobin = &rr_publish;
 // --------- Debug Code Below ----------
 // -------------------------------------
 
-void printSchedule(){
+void printSchedule() {
     if (head == NULL)
     {
         printf("Schedule Empty\n");
         return;
     }
     node *current = head;
-    while (current->next != NULL)
+    while (current != NULL)
     {
-        printf("Thread index: %d, threadId: %ld\n", current->index, current->theThread->tid);
+        printf("Thread index: %d, tid: %ld\n", current->index, current->theThread->tid);
         current = current->next;
     }
     printf("qlen: %d\n", qlen);
     return;
 }
 
+// for schedule testing purposes ONLY
+// thread createTestThread() {
+//     context *thread_context;
+//     thread_context = (context *)malloc(sizeof(context));
+//     thread_context->tid = 1234;
+//     thread testThread = thread_context;
+//     return testThread;
+// }
+
 // gcc -Wall -std=gnu99 -pedantic -o rr rr.o
 // gcc -Wall -std=gnu99 -pedantic -c rr.c
-int main(int argc, char *argv[])
-{
-    init_rr();
-    printSchedule();
-    return 0;
-}
+// int main(int argc, char *argv[])
+// {
+//     init_rr();
+//     thread testThread = createTestThread();
+
+//     admit_rr(testThread);
+//     printSchedule(); // qlen = 1
+
+//     admit_rr(testThread);
+//     printSchedule(); // qlen = 2
+
+//     remove_rr(testThread);
+//     printSchedule(); // qlen = 1
+
+//     shutdown_rr();
+//     free(testThread);
+//     printSchedule(); // Schedule Empty, qlen = 0
+
+//     return 0;
+// }
