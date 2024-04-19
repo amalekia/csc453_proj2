@@ -1,4 +1,9 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <sys/time.h>
+#include <sys/resource.h>
+#include <unistd.h>
+#include <sys/mman.h>
 #include "lwp.h"
 #include "rr.h"
 
@@ -6,11 +11,40 @@
 // scheduler s = &rr;
 
 extern tid_t lwp_create(lwpfun function, void *argument) {
-    //most of the work will be done here.
-    //creates a new thread and sets up its context 
-    //so that when it is selected by the scheduler to run
-
     tid_t tid;
+
+    //allocates a stack for the new thread
+    long pagesize = sysconf(_SC_PAGESIZE);
+
+    struct rlimit rlim;
+    getrlimit(RLIMIT_STACK, &rlim);
+
+    int remainder;
+    if (rlim.rlim_cur == RLIM_INFINITY) {
+        rlim.rlim_cur = 8000000;
+    }
+    else if ((remainder = pagesize % rlim.rlim_cur) != 0) {
+        rlim.rlim_cur += remainder;
+    }
+
+    void* stack = mmap(NULL, rlim.rlim_cur, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK, -1, 0);
+
+    if (stack == MAP_FAILED || rlim.rlim_cur == RLIM_INFINITY) {
+        return NO_THREAD;
+    }
+
+    //defines the context for the new thread
+    struct threadinfo_st* new_thread = (struct threadinfo_st*)malloc(sizeof(struct threadinfo_st));
+    new_thread->tid = tid;
+    new_thread->stack = stack;
+    new_thread->stacksize = rlim.rlim_cur;
+    new_thread->state.rsp = (unsigned long)stack + rlim.rlim_cur; //stack pointer
+    new_thread->state.rbp = (unsigned long)stack + rlim.rlim_cur; //base pointer
+    new_thread->state.rdi = (unsigned long)argument; //argument
+    new_thread->state.rsi = (unsigned long)function; //function   
+    new_thread->status = 0;
+
+    return tid;
 }
 
 extern void lwp_start(void) {
