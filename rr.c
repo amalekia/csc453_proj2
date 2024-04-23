@@ -118,7 +118,7 @@ void printSchedule() {
     return;
 }
 
-// for schedule testing purposes ONLY
+// --- for schedule testing purposes ONLY ---
 // thread createTestThread() {
 //     context *thread_context;
 //     thread_context = (context *)malloc(sizeof(context));
@@ -129,6 +129,7 @@ void printSchedule() {
 
 // gcc -Wall -std=gnu99 -pedantic -o rr rr.o
 // gcc -Wall -std=gnu99 -pedantic -c rr.c
+// valgrind --leak-check=yes ./rr
 // int main(int argc, char *argv[])
 // {
 //     init_rr();
