@@ -12,13 +12,13 @@ node *head;
 node *tail;
 int qlen; // qlen of zero means empty, qlen 1 being just the head, so head = tail, and so on
 
-void init_rr() {
+void init_rr(void) {
     head = NULL;
     tail = NULL;
     qlen = 0;
 }
 
-void shutdown_rr() {
+void shutdown_rr(void) {
     node *current = head;
     while (current != NULL)
     {
@@ -78,7 +78,7 @@ void remove_rr(thread removing){
     return;
 }
 
-thread next_rr() {
+thread next_rr(void) {
     if (head == NULL || qlen == 0)
     {
         return NULL;
@@ -88,15 +88,9 @@ thread next_rr() {
     return nextThread;
 }
 
-int qlen_rr() {
+int qlen_rr(void) {
     return qlen;
 }
-
-struct scheduler rr_publish = {NULL, NULL, admit_rr, remove_rr, next_rr, qlen_rr};
-scheduler RoundRobin = &rr_publish;
-// Calling:
-// thread nxt;
-// nxt = RoundRobin->next()
 
 // -------------------------------------
 // --------- Debug Code Below ----------
