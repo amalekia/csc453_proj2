@@ -9,6 +9,17 @@
 
 
 // scheduler s = &rr;
+extern void lwp_exit(int exitval) {
+    //terminates calling thread and switches to another thread if any
+}
+
+static void lwp_wrap(lwpfun fun, void *arg) {
+    //call the function and pass the argument
+    //when the function returns, call lwp_exit()
+    int rval;
+    rval = fun(arg);
+    lwp_exit(rval);
+}
 
 extern tid_t lwp_create(lwpfun function, void *argument) {
     tid_t tid;
@@ -43,9 +54,10 @@ extern tid_t lwp_create(lwpfun function, void *argument) {
     new_thread->state.rdi = (unsigned long)argument; //argument
     new_thread->state.rsi = (unsigned long)function; //function   
     new_thread->status = 0;
+    lwp_wrap(function, argument);
 
     //assign these when you know all locals and stuff is put on stack
-    new_thread->state.rsp = (unsigned long)stack - rlim.rlim_cur; //stack pointer
+    new_thread->state.rsp = (unsigned long)stack - ; //stack pointer
     new_thread->state.rbp = (unsigned long)stack; //base pointer
 
     //call lwp_wrap() to make funciton call and cleanup but put lwp_wrap where return address is so that it will trick program and run that
@@ -60,10 +72,6 @@ extern void lwp_start(void) {
 
 extern void lwp_yield(void) {
     //uses swap_rfiles to load its content
-}
-
-extern void lwp_exit(int exitval) {
-    //terminates calling thread and switches to another thread if any
 }
 
 extern tid_t lwp_gettid(void) {
