@@ -1,1 +1,0 @@
-# Adrick Malekian, Jack Ary

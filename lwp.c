@@ -1,5 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/time.h>
+#include <sys/resource.h>
+#include <unistd.h>
+#include <sys/mman.h>
 #include "lwp.h"
 #include "rr.h"
 
@@ -21,6 +25,7 @@ extern tid_t lwp_create(lwpfun function, void *argument) {
 extern void lwp_start(void) {
     //converts the calling thread into a LWP and lwp_yield()s to whichever 
     //thread is selected by the scheduler
+
     thread start_thread = (thread)malloc(sizeof(context));
     start_thread->tid = 0;
     start_thread->lib_one = NULL;
@@ -33,17 +38,43 @@ extern void lwp_start(void) {
 
 extern void lwp_yield(void) {
     //uses swap_rfiles to load its content
+    thread prev_thread = current_thread;
+    if (LWPTERMINATED(prev_thread->status)) {
+        CurrentScheduler->remove(prev_thread);
+    }
+    // spin?
+
+    current_thread = CurrentScheduler->next();
+    
+    // there is no next thread
+    if (current_thread == NULL) {
+        lwp_exit(prev_thread->status); // exit with status of the caller
+    }
+
+    // the last thread is the main thread - good to exit
+    if (prev_thread == current_thread) {
+        return;
+    }
+    swap_rfiles(&prev_thread->state, &current_thread->state);
 }
 
 extern void lwp_exit(int exitval) {
     //terminates calling thread and switches to another thread if any
+    free(current_thread);
+
+    // yield will reassign current_thread
+    // and advance the scheduler to the next thread
     lwp_yield();
 }
 
 extern tid_t lwp_gettid(void) {
     //return thread id of the calling LWP
-    if (current_thread == NULL){ return 0; }
-    else { return current_thread->tid; }
+    if (current_thread == NULL) { 
+        return 0; 
+    }
+    else { 
+        return current_thread->tid; 
+    }
 }
 
 extern tid_t lwp_wait(int *status) {
@@ -52,13 +83,13 @@ extern tid_t lwp_wait(int *status) {
 
 extern void lwp_set_scheduler(scheduler new_scheduler) {
     //installs a new scheduling function
-    if (new_scheduler == NULL)
-    {
+    if (new_scheduler == NULL) {
         return;
     }
     CurrentScheduler = new_scheduler;
-    if (CurrentScheduler->init)
-    {
+
+    // confirm that current scheduler has non NULL init func before calling
+    if (CurrentScheduler->init) {
         CurrentScheduler->init();
     }
 }
