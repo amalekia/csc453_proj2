@@ -42,7 +42,6 @@ extern void lwp_yield(void) {
     if (LWPTERMINATED(prev_thread->status)) {
         CurrentScheduler->remove(prev_thread);
     }
-    // spin?
 
     current_thread = CurrentScheduler->next();
     
@@ -51,7 +50,7 @@ extern void lwp_yield(void) {
         lwp_exit(prev_thread->status); // exit with status of the caller
     }
 
-    // the last thread is the main thread - good to exit
+    // the last thread is the original thread - good to exit
     if (prev_thread == current_thread) {
         return;
     }
@@ -60,7 +59,15 @@ extern void lwp_yield(void) {
 
 extern void lwp_exit(int exitval) {
     //terminates calling thread and switches to another thread if any
-    free(current_thread);
+
+    int exit_status = MKTERMSTAT(LWP_TERM, exitval);
+    current_thread->status = exit_status;
+
+    if (current_thread->tid == 0) {
+        free(current_thread);
+        CurrentScheduler->shutdown;
+        return;
+    }
 
     // yield will reassign current_thread
     // and advance the scheduler to the next thread
