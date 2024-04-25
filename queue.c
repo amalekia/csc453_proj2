@@ -21,13 +21,13 @@ void enqueue(threadNode *head, threadNode *tail, thread newThread) {
     }
 }
 
-tid_t dequeue(threadNode *head, threadNode *tail) {
+thread dequeue(threadNode *head, threadNode *tail) {
     if (head == NULL) {
         return 0;
     }
     thread nextThread = head->theThread;
     head = head->next;
-    return nextThread->tid;
+    return nextThread;
 }
 
 void freeQueue(threadNode *head, threadNode *tail) {
