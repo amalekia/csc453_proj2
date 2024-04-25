@@ -25,8 +25,13 @@ extern void lwp_exit(int exitval) {
 
     unsigned int exit_status = MKTERMSTAT(LWP_TERM, exitval);
     current_thread->status = exit_status;
+
     // if something is waiting, move back to scheduler 
-    
+    if (waitingHead != NULL) {
+        thread waiter = dequeue(waitingHead, waitingTail);
+        CurrentScheduler->admit(waiter);
+    }
+
     // yield will reassign current_thread
     // and advance the scheduler to the next thread
     lwp_yield();
@@ -51,20 +56,20 @@ extern tid_t lwp_create(lwpfun function, void *argument) {
 
     int remainder;
     if (rlim.rlim_cur == RLIM_INFINITY) {
-        rlim.rlim_cur = 8000000;
+        rlim.rlim_cur = (8*1024*1024); // 8MB
     }
     else if ((remainder = pagesize % rlim.rlim_cur) != 0) {
         rlim.rlim_cur += remainder;
     }
 
     //saves location of stack allocation for munmap()
-    void* stack_alloc = mmap(NULL, rlim.rlim_cur, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK, -1, 0);
+    unsigned long* stack_alloc = mmap(NULL, rlim.rlim_cur, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK, -1, 0);
 
     if (stack_alloc == MAP_FAILED || rlim.rlim_cur == RLIM_INFINITY) {
         return NO_THREAD;
     }
 
-    void* stack = (void*)((char*)stack_alloc + rlim.rlim_cur);
+    unsigned long* stack = (unsigned long*)((char*)stack_alloc + rlim.rlim_cur);
 
     //defines the context for the new thread and sets the state to the initial values
     struct threadinfo_st* new_thread = (struct threadinfo_st*)malloc(sizeof(struct threadinfo_st));
@@ -76,7 +81,7 @@ extern tid_t lwp_create(lwpfun function, void *argument) {
     new_thread->state.fxsave=FPU_INIT;
 
     // push return address onto stack
-    *(unsigned long*)(stack - 2) = (unsigned long)lwp_wrap;
+    *(stack - 2) = (unsigned long)lwp_wrap;
     //lwp wrap should be the return address
 
     //assign these when you know all locals and stuff is put on stack
@@ -167,26 +172,6 @@ extern tid_t lwp_wait(int *status) {
         }
         return firstTerminated->tid;
     }
-
-    // if (waitingHead == NULL) { // no waiting threads
-    //     if (CurrentScheduler->qlen == 0) { // no processes in scheduler
-    //         return NO_THREAD;
-    //     }
-    //     CurrentScheduler->remove(current_thread);
-    //     enqueue(terminatedHead, terminatedTail, current_thread);
-    //     lwp_yield();
-    // }
-    // else {
-    //     waiter = dequeue(waitingHead, waitingTail);
-    // }
-
-    // if (waiter == NULL) {
-    //     return NO_THREAD;
-    // } 
-    // else { 
-    //     CurrentScheduler->admit(waiter);
-    //     return waiter->tid;
-    // }
 }
 
 extern void lwp_set_scheduler(scheduler new_scheduler) {
