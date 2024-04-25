@@ -38,29 +38,45 @@ extern tid_t lwp_create(lwpfun function, void *argument) {
         rlim.rlim_cur += remainder;
     }
 
-    void* stack = mmap(NULL, rlim.rlim_cur, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK, -1, 0);
+    //saves location of stack allocation for munmap()
+    void* stack_alloc = mmap(NULL, rlim.rlim_cur, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK, -1, 0);
 
     if (stack == MAP_FAILED || rlim.rlim_cur == RLIM_INFINITY) {
         return NO_THREAD;
     }
 
-    stack = (void*)((char*)stack + rlim.rlim_cur);
+    stack = (void*)((char*)stack_alloc + rlim.rlim_cur);
 
-    //defines the context for the new thread
+    //defines the context for the new thread and sets the state to the initial values
     struct threadinfo_st* new_thread = (struct threadinfo_st*)malloc(sizeof(struct threadinfo_st));
     new_thread->tid = tid;
     new_thread->stack = stack;
     new_thread->stacksize = rlim.rlim_cur;
     new_thread->state.rdi = (unsigned long)argument; //argument
     new_thread->state.rsi = (unsigned long)function; //function   
-    new_thread->status = 0;
-    lwp_wrap(function, argument);
+    new_thread->state.fxsave=FPU_INIT;
+
+    // push return address onto stack
+    *(unsigned long*)(stack - sizeof(unsigned long)) = (unsigned long)lwp_wrap;
+    //lwp wrap should be the return address
+
+    //lwp_wrap?
+    // 1. put the arguments on the stack
+    // 2. put the address of the arguments on the stack
+    // 3. put the address of the arguments in a register
+    // 4. put the arguments in registers
+    // 5. put the arguments in a global variable
+    // 6. put the arguments in a struct and pass the address
 
     //assign these when you know all locals and stuff is put on stack
-    new_thread->state.rsp = (unsigned long)stack - ; //stack pointer
+    new_thread->state.rsp = (unsigned long)stack - sizeof((unsigned long)*2); //stack pointer
     new_thread->state.rbp = (unsigned long)stack; //base pointer
+    // push base pointer onto stack
 
     //call lwp_wrap() to make funciton call and cleanup but put lwp_wrap where return address is so that it will trick program and run that
+
+    //after calling the process and stack is popped, free mem allocated for stack
+    munmap(stack_alloc, rlim.rlim_cur);
 
     return tid;
 }
