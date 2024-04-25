@@ -60,11 +60,11 @@ extern tid_t lwp_create(lwpfun function, void *argument) {
     //saves location of stack allocation for munmap()
     void* stack_alloc = mmap(NULL, rlim.rlim_cur, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK, -1, 0);
 
-    if (stack == MAP_FAILED || rlim.rlim_cur == RLIM_INFINITY) { // should this be stack_alloc?
+    if (stack_alloc == MAP_FAILED || rlim.rlim_cur == RLIM_INFINITY) { // should this be stack_alloc?
         return NO_THREAD;
     }
 
-    stack = (void*)((char*)stack_alloc + rlim.rlim_cur);
+    void* stack = (void*)((char*)stack_alloc + rlim.rlim_cur);
 
     //defines the context for the new thread and sets the state to the initial values
     struct threadinfo_st* new_thread = (struct threadinfo_st*)malloc(sizeof(struct threadinfo_st));
