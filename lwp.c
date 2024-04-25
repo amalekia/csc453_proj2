@@ -155,6 +155,16 @@ extern tid_t lwp_wait(int *status) {
     //waits for the thread with the given id to terminate
 
     thread waiter = NULL;
+    if (terminatedHead == NULL) { // no terminated threads
+        CurrentScheduler->remove(current_thread);
+        enqueue(waitingHead, waitingTail, current_thread);
+    }
+    else {
+        // get status?
+        thread firstTerminated = dequeue(terminatedHead, terminatedTail);
+        return firstTerminated->tid;
+    }
+
     if (waitingHead == NULL) { // no waiting threads
         if (CurrentScheduler->qlen == 0) { // no processes in scheduler
             return NO_THREAD;
@@ -173,15 +183,6 @@ extern tid_t lwp_wait(int *status) {
     else { 
         CurrentScheduler->admit(waiter);
         return waiter->tid;
-    }
-
-    if (terminatedHead == NULL) { // no terminated threads
-        CurrentScheduler->remove(current_thread);
-        enqueue(waitingHead, waitingTail, current_thread);
-    }
-    else {
-        thread firstTerminated = dequeue(terminatedHead, terminatedTail);
-        return firstTerminated->tid;
     }
 }
 
