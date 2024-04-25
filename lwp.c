@@ -6,8 +6,14 @@
 #include <sys/mman.h>
 #include "lwp.h"
 #include "rr.h"
+#include "queue.h"
 
 int thread_count = 0;
+
+threadNode *terminatedHead = NULL;
+threadNode *terminatedTail = NULL;
+threadNode *waitingHead = NULL;
+threadNode *waitingTail = NULL;
 
 thread current_thread = NULL;
 
@@ -97,6 +103,7 @@ extern void lwp_start(void) {
     //thread is selected by the scheduler
 
     thread start_thread = (thread)malloc(sizeof(context));
+    start_thread->stack = NULL;
     start_thread->tid = 0;
     start_thread->lib_one = NULL;
     start_thread->lib_two = NULL;
@@ -112,6 +119,7 @@ extern void lwp_yield(void) {
     thread prev_thread = current_thread;
     if (LWPTERMINATED(prev_thread->status)) {
         CurrentScheduler->remove(prev_thread);
+        enqueue(terminatedHead, terminatedTail, prev_thread); // add to terminated queue
     }
 
     current_thread = CurrentScheduler->next();
@@ -122,9 +130,11 @@ extern void lwp_yield(void) {
     }
 
     // the last thread is the original thread - good to exit
-    if (prev_thread == current_thread) {
-        return;
-    }
+    // if (prev_thread == current_thread) {
+    //     return;
+    // }
+
+    // void swap_rfiles(rfile *old, rfile *new)
     swap_rfiles(&prev_thread->state, &current_thread->state);
 }
 
@@ -140,6 +150,15 @@ extern tid_t lwp_gettid(void) {
 
 extern tid_t lwp_wait(int *status) {
     //waits for the thread with the given id to terminate
+
+    if (terminatedHead == NULL) { // there are no terminated threads
+        CurrentScheduler->remove(current_thread);
+        enqueue(waitingHead, waitingTail, current_thread);
+    }
+    else {
+        tid_t old_thread = dequeue(terminatedHead, terminatedTail);
+        return old_thread;
+    }
 }
 
 extern void lwp_set_scheduler(scheduler new_scheduler) {
