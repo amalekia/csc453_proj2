@@ -6,11 +6,16 @@
 #include <sys/mman.h>
 #include "lwp.h"
 #include "rr.h"
+#include "queue.h"
 
 int thread_count = 0;
 
-// scheduler s = &rr;
-thread current_thread = NULL;
+threadNode *terminatedHead;
+threadNode *terminatedTail;
+threadNode *waitingHead;
+threadNode *waitingTail;
+
+thread current_thread;
 
 struct scheduler rr_publish = {init_rr, shutdown_rr, admit_rr, remove_rr, next_rr, qlen_rr};
 scheduler CurrentScheduler = &rr_publish;
@@ -18,14 +23,8 @@ scheduler CurrentScheduler = &rr_publish;
 extern void lwp_exit(int exitval) {
     //terminates calling thread and switches to another thread if any
 
-    int exit_status = MKTERMSTAT(LWP_TERM, exitval);
+    unsigned int exit_status = MKTERMSTAT(LWP_TERM, exitval);
     current_thread->status = exit_status;
-
-    if (current_thread->tid == 0) {
-        free(current_thread);
-        CurrentScheduler->shutdown;
-        return;
-    }
 
     // yield will reassign current_thread
     // and advance the scheduler to the next thread
@@ -60,11 +59,10 @@ extern tid_t lwp_create(lwpfun function, void *argument) {
     //saves location of stack allocation for munmap()
     void* stack_alloc = mmap(NULL, rlim.rlim_cur, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK, -1, 0);
 
-    if (stack_alloc == MAP_FAILED || rlim.rlim_cur == RLIM_INFINITY) { // should this be stack_alloc?
+    if (stack_alloc == MAP_FAILED || rlim.rlim_cur == RLIM_INFINITY) {
         return NO_THREAD;
     }
 
-    //stack points to the top of the stack
     void* stack = (void*)((char*)stack_alloc + rlim.rlim_cur);
 
     //defines the context for the new thread and sets the state to the initial values
@@ -77,12 +75,12 @@ extern tid_t lwp_create(lwpfun function, void *argument) {
     new_thread->state.fxsave=FPU_INIT;
 
     // push return address onto stack
-    *(unsigned long*)(stack - sizeof(unsigned long)) = (unsigned long)lwp_wrap;
+    *(unsigned long*)(stack - 2) = (unsigned long)lwp_wrap;
     //lwp wrap should be the return address
 
     //assign these when you know all locals and stuff is put on stack
-    new_thread->state.rsp = (unsigned long)stack - sizeof(unsigned long); //stack pointer
-    new_thread->state.rbp = (unsigned long)stack; //base pointer
+    new_thread->state.rsp = (unsigned long)(stack - 3); //stack pointer
+    new_thread->state.rbp = (unsigned long)(stack - 3); //base pointer
     // push base pointer onto stack
 
     //call lwp_wrap() to make funciton call and cleanup but put lwp_wrap where return address is so that it will trick program and run that
@@ -95,7 +93,7 @@ extern tid_t lwp_create(lwpfun function, void *argument) {
     tid = thread_count;
 
     //after calling the process and stack is popped, free mem allocated for stack
-    munmap(stack_alloc, rlim.rlim_cur);
+    // munmap(stack_alloc, rlim.rlim_cur); - done later in exit
 
     return tid;
 }
@@ -105,6 +103,7 @@ extern void lwp_start(void) {
     //thread is selected by the scheduler
 
     thread start_thread = (thread)malloc(sizeof(context));
+    start_thread->stack = NULL; //?
     start_thread->tid = 0;
     start_thread->lib_one = NULL;
     start_thread->lib_two = NULL;
@@ -116,24 +115,30 @@ extern void lwp_start(void) {
 
 extern void lwp_yield(void) {
     //uses swap_rfiles to load its content
+
     thread prev_thread = current_thread;
     if (LWPTERMINATED(prev_thread->status)) {
         CurrentScheduler->remove(prev_thread);
+        enqueue(terminatedHead, terminatedTail, prev_thread); // add to terminated queue
+    } else {
+        CurrentScheduler->remove(prev_thread);
+        enqueue(waitingHead, waitingTail, prev_thread);
     }
 
     current_thread = CurrentScheduler->next();
     
     // there is no next thread
     if (current_thread == NULL) {
-        lwp_exit(prev_thread->status); // exit with status of the caller
-                                       // not sure about this??
+        lwp_exit(prev_thread->status); 
     }
 
     // the last thread is the original thread - good to exit
     if (prev_thread == current_thread) {
         return;
     }
-    swap_rfiles(&prev_thread->state, &current_thread->state);
+
+    // void swap_rfiles(rfile *old, rfile *new)
+    swap_rfiles(&prev_thread->state, &current_thread->state); // crash here
 }
 
 extern tid_t lwp_gettid(void) {
@@ -148,6 +153,36 @@ extern tid_t lwp_gettid(void) {
 
 extern tid_t lwp_wait(int *status) {
     //waits for the thread with the given id to terminate
+
+    thread waiter = NULL;
+    if (waitingHead == NULL) { // no waiting threads
+        if (CurrentScheduler->qlen == 0) { // no processes in scheduler
+            return NO_THREAD;
+        }
+        CurrentScheduler->remove(current_thread);
+        enqueue(terminatedHead, terminatedTail, current_thread);
+        lwp_yield();
+    }
+    else {
+        waiter = dequeue(waitingHead, waitingTail);
+    }
+
+    if (waiter == NULL) {
+        return NO_THREAD;
+    } 
+    else { 
+        CurrentScheduler->admit(waiter);
+        return waiter->tid;
+    }
+
+    if (terminatedHead == NULL) { // no terminated threads
+        CurrentScheduler->remove(current_thread);
+        enqueue(waitingHead, waitingTail, current_thread);
+    }
+    else {
+        thread firstTerminated = dequeue(terminatedHead, terminatedTail);
+        return firstTerminated->tid;
+    }
 }
 
 extern void lwp_set_scheduler(scheduler new_scheduler) {
