@@ -64,6 +64,7 @@ extern tid_t lwp_create(lwpfun function, void *argument) {
         return NO_THREAD;
     }
 
+    //stack points to the top of the stack
     void* stack = (void*)((char*)stack_alloc + rlim.rlim_cur);
 
     //defines the context for the new thread and sets the state to the initial values
