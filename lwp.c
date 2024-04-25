@@ -7,8 +7,9 @@
 #include "lwp.h"
 #include "rr.h"
 
+int thread_count = 0;
 
-// scheduler s = &rr;
+scheduler s = &rr;
 extern void lwp_exit(int exitval) {
     //terminates calling thread and switches to another thread if any
 }
@@ -60,20 +61,19 @@ extern tid_t lwp_create(lwpfun function, void *argument) {
     *(unsigned long*)(stack - sizeof(unsigned long)) = (unsigned long)lwp_wrap;
     //lwp wrap should be the return address
 
-    //lwp_wrap?
-    // 1. put the arguments on the stack
-    // 2. put the address of the arguments on the stack
-    // 3. put the address of the arguments in a register
-    // 4. put the arguments in registers
-    // 5. put the arguments in a global variable
-    // 6. put the arguments in a struct and pass the address
-
     //assign these when you know all locals and stuff is put on stack
-    new_thread->state.rsp = (unsigned long)stack - sizeof((unsigned long)*2); //stack pointer
+    new_thread->state.rsp = (unsigned long)stack - sizeof(unsigned long); //stack pointer
     new_thread->state.rbp = (unsigned long)stack; //base pointer
     // push base pointer onto stack
 
     //call lwp_wrap() to make funciton call and cleanup but put lwp_wrap where return address is so that it will trick program and run that
+
+    //admit the new thread to the scheduler
+    s->admit_rr(new_thread);
+
+    //increment thread count and assign thread id
+    thread_count++;
+    tid = thread_count;
 
     //after calling the process and stack is popped, free mem allocated for stack
     munmap(stack_alloc, rlim.rlim_cur);
