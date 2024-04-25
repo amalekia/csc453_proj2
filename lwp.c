@@ -48,6 +48,7 @@ extern void lwp_yield(void) {
     // there is no next thread
     if (current_thread == NULL) {
         lwp_exit(prev_thread->status); // exit with status of the caller
+                                       // not sure about this??
     }
 
     // the last thread is the original thread - good to exit
