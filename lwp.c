@@ -25,7 +25,8 @@ extern void lwp_exit(int exitval) {
 
     unsigned int exit_status = MKTERMSTAT(LWP_TERM, exitval);
     current_thread->status = exit_status;
-
+    // if something is waiting, move back to scheduler 
+    
     // yield will reassign current_thread
     // and advance the scheduler to the next thread
     lwp_yield();
@@ -160,30 +161,32 @@ extern tid_t lwp_wait(int *status) {
         enqueue(waitingHead, waitingTail, current_thread);
     }
     else {
-        // get status?
         thread firstTerminated = dequeue(terminatedHead, terminatedTail);
+        if (status != NULL) {
+            *status = firstTerminated->status;
+        }
         return firstTerminated->tid;
     }
 
-    if (waitingHead == NULL) { // no waiting threads
-        if (CurrentScheduler->qlen == 0) { // no processes in scheduler
-            return NO_THREAD;
-        }
-        CurrentScheduler->remove(current_thread);
-        enqueue(terminatedHead, terminatedTail, current_thread);
-        lwp_yield();
-    }
-    else {
-        waiter = dequeue(waitingHead, waitingTail);
-    }
+    // if (waitingHead == NULL) { // no waiting threads
+    //     if (CurrentScheduler->qlen == 0) { // no processes in scheduler
+    //         return NO_THREAD;
+    //     }
+    //     CurrentScheduler->remove(current_thread);
+    //     enqueue(terminatedHead, terminatedTail, current_thread);
+    //     lwp_yield();
+    // }
+    // else {
+    //     waiter = dequeue(waitingHead, waitingTail);
+    // }
 
-    if (waiter == NULL) {
-        return NO_THREAD;
-    } 
-    else { 
-        CurrentScheduler->admit(waiter);
-        return waiter->tid;
-    }
+    // if (waiter == NULL) {
+    //     return NO_THREAD;
+    // } 
+    // else { 
+    //     CurrentScheduler->admit(waiter);
+    //     return waiter->tid;
+    // }
 }
 
 extern void lwp_set_scheduler(scheduler new_scheduler) {
