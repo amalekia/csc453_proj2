@@ -9,7 +9,6 @@
 
 int thread_count = 0;
 
-// scheduler s = &rr;
 thread current_thread = NULL;
 
 struct scheduler rr_publish = {init_rr, shutdown_rr, admit_rr, remove_rr, next_rr, qlen_rr};
@@ -18,14 +17,8 @@ scheduler CurrentScheduler = &rr_publish;
 extern void lwp_exit(int exitval) {
     //terminates calling thread and switches to another thread if any
 
-    int exit_status = MKTERMSTAT(LWP_TERM, exitval);
+    unsigned int exit_status = MKTERMSTAT(LWP_TERM, exitval);
     current_thread->status = exit_status;
-
-    if (current_thread->tid == 0) {
-        free(current_thread);
-        CurrentScheduler->shutdown;
-        return;
-    }
 
     // yield will reassign current_thread
     // and advance the scheduler to the next thread
@@ -60,11 +53,11 @@ extern tid_t lwp_create(lwpfun function, void *argument) {
     //saves location of stack allocation for munmap()
     void* stack_alloc = mmap(NULL, rlim.rlim_cur, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK, -1, 0);
 
-    if (stack == MAP_FAILED || rlim.rlim_cur == RLIM_INFINITY) { // should this be stack_alloc?
+    if (stack_alloc == MAP_FAILED || rlim.rlim_cur == RLIM_INFINITY) {
         return NO_THREAD;
     }
 
-    stack = (void*)((char*)stack_alloc + rlim.rlim_cur);
+    void* stack = (void*)((char*)stack_alloc + rlim.rlim_cur);
 
     //defines the context for the new thread and sets the state to the initial values
     struct threadinfo_st* new_thread = (struct threadinfo_st*)malloc(sizeof(struct threadinfo_st));
@@ -115,6 +108,7 @@ extern void lwp_start(void) {
 
 extern void lwp_yield(void) {
     //uses swap_rfiles to load its content
+
     thread prev_thread = current_thread;
     if (LWPTERMINATED(prev_thread->status)) {
         CurrentScheduler->remove(prev_thread);
@@ -124,8 +118,7 @@ extern void lwp_yield(void) {
     
     // there is no next thread
     if (current_thread == NULL) {
-        lwp_exit(prev_thread->status); // exit with status of the caller
-                                       // not sure about this??
+        lwp_exit(prev_thread->status); 
     }
 
     // the last thread is the original thread - good to exit
