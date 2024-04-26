@@ -73,12 +73,15 @@ extern tid_t lwp_create(lwpfun function, void *argument) {
 
     //defines the context for the new thread and sets the state to the initial values
     struct threadinfo_st* new_thread = (struct threadinfo_st*)malloc(sizeof(struct threadinfo_st));
+    //increment thread count and assign thread id
+    thread_count++;
+    tid = thread_count;
+    new_thread->state.fxsave=FPU_INIT;
     new_thread->tid = tid;
     new_thread->stack = stack;
     new_thread->stacksize = rlim.rlim_cur;
     new_thread->state.rdi = (unsigned long)argument; //argument
     new_thread->state.rsi = (unsigned long)function; //function   
-    new_thread->state.fxsave=FPU_INIT;
 
     // push return address onto stack
     *(stack - 2) = (unsigned long)lwp_wrap;
@@ -93,10 +96,6 @@ extern tid_t lwp_create(lwpfun function, void *argument) {
 
     //admit the new thread to the scheduler
     CurrentScheduler->admit(new_thread);
-
-    //increment thread count and assign thread id
-    thread_count++;
-    tid = thread_count;
 
     //after calling the process and stack is popped, free mem allocated for stack
     // munmap(stack_alloc, rlim.rlim_cur); - done later in exit
