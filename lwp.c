@@ -80,7 +80,7 @@ extern tid_t lwp_create(lwpfun function, void *argument) {
     unsigned long* stack = (unsigned long*)((char*)stack_alloc + rlim.rlim_cur);
 
     //defines the context for the new thread and sets the state to the initial values
-    struct threadinfo_st* new_thread = (struct threadinfo_st*)malloc(sizeof(struct threadinfo_st));
+    struct threadinfo_st* new_thread = (struct threadinfo_st*)malloc(sizeof(struct threadinfo_st)); // if issues try mmap
     new_thread->tid = tid;
     new_thread->stack = stack;
     new_thread->stacksize = rlim.rlim_cur;
@@ -154,7 +154,8 @@ extern tid_t lwp_gettid(void) {
 
 extern tid_t lwp_wait(int *status) {
     //waits for the thread with the given id to terminate
-
+    //all memory freeing happens here - every thread must be waited on
+    
     thread waiter = NULL;
     if (terminatedHead == NULL) { // no terminated threads
         CurrentScheduler->remove(current_thread);
@@ -165,7 +166,9 @@ extern tid_t lwp_wait(int *status) {
         if (status != NULL) {
             *status = firstTerminated->status;
         }
-        return firstTerminated->tid;
+        tid_t ret_val = firstTerminated->tid;
+        free(firstTerminated);
+        return ret_val;
     }
 }
 
