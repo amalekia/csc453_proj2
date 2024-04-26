@@ -26,6 +26,14 @@ extern void lwp_exit(int exitval) {
     unsigned int exit_status = MKTERMSTAT(LWP_TERM, exitval);
     current_thread->status = exit_status;
 
+    if (LWPTERMINATED(current_thread->status)) {
+        CurrentScheduler->remove(current_thread);
+        enqueue(terminatedHead, terminatedTail, current_thread); // add to terminated queue
+    } else {
+        CurrentScheduler->remove(current_thread);
+        enqueue(waitingHead, waitingTail, current_thread);
+    }
+
     // if something is waiting, move back to scheduler 
     if (waitingHead != NULL) {
         thread waiter = dequeue(waitingHead, waitingTail);
@@ -122,20 +130,7 @@ extern void lwp_yield(void) {
     //uses swap_rfiles to load its content
 
     thread prev_thread = current_thread;
-    if (LWPTERMINATED(prev_thread->status)) {
-        CurrentScheduler->remove(prev_thread);
-        enqueue(terminatedHead, terminatedTail, prev_thread); // add to terminated queue
-    } else {
-        CurrentScheduler->remove(prev_thread);
-        enqueue(waitingHead, waitingTail, prev_thread);
-    }
-
     current_thread = CurrentScheduler->next();
-    
-    // there is no next thread
-    if (current_thread == NULL) {
-        lwp_exit(prev_thread->status); 
-    }
 
     // the last thread is the original thread - good to exit
     if (prev_thread == current_thread) {
@@ -158,8 +153,8 @@ extern tid_t lwp_gettid(void) {
 
 extern tid_t lwp_wait(int *status) {
     //waits for the thread with the given id to terminate
+    //all memory freeing happens here - every thread must be waited on
 
-    thread waiter = NULL;
     if (terminatedHead == NULL) { // no terminated threads
         CurrentScheduler->remove(current_thread);
         enqueue(waitingHead, waitingTail, current_thread);
@@ -169,7 +164,9 @@ extern tid_t lwp_wait(int *status) {
         if (status != NULL) {
             *status = firstTerminated->status;
         }
-        return firstTerminated->tid;
+        tid_t ret_val = firstTerminated->tid;
+        free(firstTerminated);
+        return ret_val;
     }
 }
 
