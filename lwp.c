@@ -155,8 +155,7 @@ extern tid_t lwp_gettid(void) {
 extern tid_t lwp_wait(int *status) {
     //waits for the thread with the given id to terminate
     //all memory freeing happens here - every thread must be waited on
-    
-    thread waiter = NULL;
+
     if (terminatedHead == NULL) { // no terminated threads
         CurrentScheduler->remove(current_thread);
         enqueue(waitingHead, waitingTail, current_thread);
