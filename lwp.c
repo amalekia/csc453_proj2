@@ -26,6 +26,14 @@ extern void lwp_exit(int exitval) {
     unsigned int exit_status = MKTERMSTAT(LWP_TERM, exitval);
     current_thread->status = exit_status;
 
+    if (LWPTERMINATED(current_thread->status)) {
+        CurrentScheduler->remove(current_thread);
+        enqueue(terminatedHead, terminatedTail, current_thread); // add to terminated queue
+    } else {
+        CurrentScheduler->remove(current_thread);
+        enqueue(waitingHead, waitingTail, current_thread);
+    }
+
     // if something is waiting, move back to scheduler 
     if (waitingHead != NULL) {
         thread waiter = dequeue(waitingHead, waitingTail);
@@ -123,20 +131,7 @@ extern void lwp_yield(void) {
     //uses swap_rfiles to load its content
 
     thread prev_thread = current_thread;
-    if (LWPTERMINATED(prev_thread->status)) {
-        CurrentScheduler->remove(prev_thread);
-        enqueue(terminatedHead, terminatedTail, prev_thread); // add to terminated queue
-    } else {
-        CurrentScheduler->remove(prev_thread);
-        enqueue(waitingHead, waitingTail, prev_thread);
-    }
-
     current_thread = CurrentScheduler->next();
-    
-    // there is no next thread
-    if (current_thread == NULL) {
-        lwp_exit(prev_thread->status); 
-    }
 
     // the last thread is the original thread - good to exit
     if (prev_thread == current_thread) {

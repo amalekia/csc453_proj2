@@ -20,8 +20,7 @@ void init_rr(void) {
 
 void shutdown_rr(void) {
     node *current = head;
-    while (current != NULL)
-    {
+    while (current != NULL) {
         node *target = current;
         current = current->next;
         free(target);
@@ -34,20 +33,17 @@ void shutdown_rr(void) {
 
 // Done for now, needs testing
 void admit_rr(thread newThread){
-    if (newThread == NULL)
-    {
+    if (newThread == NULL) {
         return;
     }
-    if (head == NULL)
-    {
+    if (head == NULL) {
         head = (node *)malloc(sizeof(node));
         head->theThread = newThread;
         head->next = NULL;
         head->index = qlen++;
         tail = head;
     }
-    else
-    {
+    else {
         tail->next = (node *)malloc(sizeof(node));
         tail->next->theThread = newThread;
         tail->next->index = qlen++;
@@ -56,17 +52,14 @@ void admit_rr(thread newThread){
     }
 }
 
-void remove_rr(thread removing){
-    if (removing == NULL)
-    {
+void remove_rr(thread removing) {
+    if (removing == NULL) {
         return;
     }
 
     node *current = head;
-    while (current != NULL)
-    {
-        if (current->next->theThread == removing)
-        {
+    while (current != NULL) {
+        if (current->next->theThread == removing) {
             node *removalTarget = current->next;
             current->next = current->next->next;
             free(removalTarget);
@@ -79,8 +72,7 @@ void remove_rr(thread removing){
 }
 
 thread next_rr(void) {
-    if (head == NULL || qlen == 0)
-    {
+    if (head == NULL || qlen == 0) {
         return NULL;
     }
     thread nextThread = head->theThread;
@@ -97,14 +89,12 @@ int qlen_rr(void) {
 // -------------------------------------
 
 void printSchedule() {
-    if (head == NULL)
-    {
+    if (head == NULL) {
         printf("Schedule Empty\n");
         return;
     }
     node *current = head;
-    while (current != NULL)
-    {
+    while (current != NULL) {
         printf("Thread index: %d, tid: %ld\n", current->index, current->theThread->tid);
         current = current->next;
     }
