@@ -80,8 +80,8 @@ extern tid_t lwp_create(lwpfun function, void *argument) {
     new_thread->tid = tid;
     new_thread->stack = stack;
     new_thread->stacksize = rlim.rlim_cur;
-    new_thread->state.rdi = (unsigned long)argument; //argument
-    new_thread->state.rsi = (unsigned long)function; //function   
+    new_thread->state.rdi = (unsigned long)function; //function
+    new_thread->state.rsi = (unsigned long)argument; //argument   
 
     // push return address onto stack
     *(stack - 2) = (unsigned long)lwp_wrap;
