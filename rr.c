@@ -8,10 +8,6 @@
 //     struct queueNode *next;
 // } node;
 
-// node *head;
-// node *tail;
-// int qlen; // qlen of zero means empty, qlen 1 being just the head, so head = tail, and so on
-
 thread head;
 thread next;
 int qlen;
@@ -53,32 +49,30 @@ void admit_rr(thread newThread) {
 }
 
 void remove_rr(thread removing) {
-    if (removing == NULL || head == NULL) {
+    if (removing == NULL) {
         return;
     }
+    if (head == removing) {
+        head = removing->sched_one;
+    }
 
-    node *current = head;
-    while (current != NULL) {
-        if (current->next->theThread == removing) {
-            node *removalTarget = current->next;
-            current->next = current->next->next;
-            free(removalTarget);
-            qlen--;
-            return;
-        }
-        current = current->next;
+    if (removing->sched_two != NULL) {
+        removing->sched_two->sched_one = removing->sched_one;
+    }
+    if (removing->sched_one != NULL) {
+        removing->sched_one->sched_two = removing->sched_two;
     }
     qlen--;
-    return;
 }
 
 thread next_rr(void) {
     if (next == NULL) {
         next = head;
     } else {
-        next = next->sched_one;
-        if (next == NULL) {
+        if (next->sched_one == NULL) {
             next = head;
+        } else {
+            next = next->sched_one;
         }
     }
     return next;
@@ -92,19 +86,10 @@ int qlen_rr(void) {
 // --------- Debug Code Below ----------
 // -------------------------------------
 
-void printSchedule() {
-    if (head == NULL) {
-        printf("Schedule Empty\n");
-        return;
-    }
-    node *current = head;
-    while (current != NULL) {
-        printf("Thread index: %d, tid: %ld\n", current->index, current->theThread->tid);
-        current = current->next;
-    }
-    printf("qlen: %d\n", qlen);
-    return;
-}
+// void printSchedule() {
+//     printf("qlen: %d\n", qlen);
+//     return;
+// }
 
 // --- for schedule testing purposes ONLY ---
 // thread createTestThread() {
