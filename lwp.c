@@ -129,6 +129,10 @@ extern void lwp_yield(void) {
     thread prev_thread = current_thread;
     current_thread = CurrentScheduler->next();
 
+    if (current_thread == NULL) {
+        exit(prev_thread->status);
+    }
+
     // the last thread is the original thread - good to exit
     if (prev_thread == current_thread) {
         return;
