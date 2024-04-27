@@ -98,9 +98,6 @@ extern tid_t lwp_create(lwpfun function, void *argument) {
     //assign these when you know all locals and stuff is put on stack
     new_thread->state.rsp = (unsigned long)(stack - 3); //stack pointer
     new_thread->state.rbp = (unsigned long)(stack - 3); //base pointer
-    // push base pointer onto stack
-
-    //call lwp_wrap() to make funciton call and cleanup but put lwp_wrap where return address is so that it will trick program and run that
 
     //admit the new thread to the scheduler
     CurrentScheduler->admit(new_thread);
