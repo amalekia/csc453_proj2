@@ -2,82 +2,74 @@
 #include <stdlib.h>
 #include "lwp.h"
 
-typedef struct queueNode{
-    int index;
-    thread theThread;
-    struct queueNode *next;
-} node;
-
-node *head;
-node *tail;
-int qlen; // qlen of zero means empty, qlen 1 being just the head, so head = tail, and so on
+thread head;
+thread next;
+int qlen;
 
 void init_rr(void) {
     head = NULL;
-    tail = NULL;
+    next = NULL;
     qlen = 0;
 }
 
 void shutdown_rr(void) {
-    node *current = head;
-    while (current != NULL) {
-        node *target = current;
-        current = current->next;
-        free(target);
+    thread tmp;
+    thread current = head;
+    while (current->sched_one != NULL) {
+        tmp = current->sched_one;
+        free(current);
+        current = tmp;
     }
     head = NULL;
-    tail = NULL;
     qlen = 0;
     return;
 }
 
-// Done for now, needs testing
-void admit_rr(thread newThread){
-    if (newThread == NULL) {
-        return;
-    }
+void admit_rr(thread newThread) {
     if (head == NULL) {
-        head = (node *)malloc(sizeof(node));
-        head->theThread = newThread;
-        head->next = NULL;
-        head->index = qlen++;
-        tail = head;
+        head = newThread;
+        head->sched_two = NULL;
+        head->sched_one = NULL;
+    } else {
+        thread current = head;
+        while (current->sched_one != NULL) {
+            current = current->sched_one;
+        }
+        newThread->sched_one = NULL;      // new->next = NULL
+        newThread->sched_two = current;   // new->prev = current
+        current->sched_one = newThread;   // old_tail->next = new
     }
-    else {
-        tail->next = (node *)malloc(sizeof(node));
-        tail->next->theThread = newThread;
-        tail->next->index = qlen++;
-        tail->next->next = NULL;
-        tail = tail->next;
-    }
+    qlen++;
 }
 
 void remove_rr(thread removing) {
     if (removing == NULL) {
         return;
     }
-
-    node *current = head;
-    while (current != NULL) {
-        if (current->next->theThread == removing) {
-            node *removalTarget = current->next;
-            current->next = current->next->next;
-            free(removalTarget);
-            qlen--;
-            return;
-        }
-        current = current->next;
+    if (head == removing) {
+        head = removing->sched_one;
     }
-    return;
+
+    if (removing->sched_two != NULL) {
+        removing->sched_two->sched_one = removing->sched_one;
+    }
+    if (removing->sched_one != NULL) {
+        removing->sched_one->sched_two = removing->sched_two;
+    }
+    qlen--;
 }
 
 thread next_rr(void) {
-    if (head == NULL || qlen == 0) {
-        return NULL;
+    if (next == NULL) {
+        next = head;
+    } else {
+        if (next->sched_one == NULL) {
+            next = head;
+        } else {
+            next = next->sched_one;
+        }
     }
-    thread nextThread = head->theThread;
-    head = head->next;
-    return nextThread;
+    return next;
 }
 
 int qlen_rr(void) {
@@ -88,19 +80,10 @@ int qlen_rr(void) {
 // --------- Debug Code Below ----------
 // -------------------------------------
 
-void printSchedule() {
-    if (head == NULL) {
-        printf("Schedule Empty\n");
-        return;
-    }
-    node *current = head;
-    while (current != NULL) {
-        printf("Thread index: %d, tid: %ld\n", current->index, current->theThread->tid);
-        current = current->next;
-    }
-    printf("qlen: %d\n", qlen);
-    return;
-}
+// void printSchedule() {
+//     printf("qlen: %d\n", qlen);
+//     return;
+// }
 
 // --- for schedule testing purposes ONLY ---
 // thread createTestThread() {
