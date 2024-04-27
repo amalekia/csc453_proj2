@@ -2,12 +2,6 @@
 #include <stdlib.h>
 #include "lwp.h"
 
-// typedef struct queueNode{
-//     int index;
-//     thread theThread;
-//     struct queueNode *next;
-// } node;
-
 thread head;
 thread next;
 int qlen;
@@ -34,8 +28,8 @@ void shutdown_rr(void) {
 void admit_rr(thread newThread) {
     if (head == NULL) {
         head = newThread;
-        head->sched_one = NULL;
         head->sched_two = NULL;
+        head->sched_one = NULL;
     } else {
         thread current = head;
         while (current->sched_one != NULL) {
