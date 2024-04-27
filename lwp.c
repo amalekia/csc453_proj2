@@ -190,4 +190,19 @@ extern scheduler lwp_get_scheduler(void) {
 
 extern thread tid2thread(tid_t tid) {
     //maps a thread id to a context
+    threadNode *temp = terminatedHead;
+    while (temp != NULL) {
+        if (temp->theThread->tid == tid) {
+            return temp->theThread;
+        }
+        temp = temp->next;
+    }
+    temp = waitingHead;
+    while (temp != NULL) {
+        if (temp->theThread->tid == tid) {
+            return temp->theThread;
+        }
+        temp = temp->next;
+    }
+    return NULL;
 }
