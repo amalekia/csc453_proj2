@@ -2,58 +2,58 @@
 #include <stdlib.h>
 #include "lwp.h"
 
-typedef struct queueNode{
-    int index;
-    thread theThread;
-    struct queueNode *next;
-} node;
+// typedef struct queueNode{
+//     int index;
+//     thread theThread;
+//     struct queueNode *next;
+// } node;
 
-node *head;
-node *tail;
-int qlen; // qlen of zero means empty, qlen 1 being just the head, so head = tail, and so on
+// node *head;
+// node *tail;
+// int qlen; // qlen of zero means empty, qlen 1 being just the head, so head = tail, and so on
+
+thread head;
+thread next;
+int qlen;
 
 void init_rr(void) {
     head = NULL;
-    tail = NULL;
+    next = NULL;
     qlen = 0;
 }
 
 void shutdown_rr(void) {
-    node *current = head;
-    while (current != NULL) {
-        node *target = current;
-        current = current->next;
-        free(target);
+    thread tmp;
+    thread current = head;
+    while (current->sched_one != NULL) {
+        tmp = current->sched_one;
+        free(current);
+        current = tmp;
     }
     head = NULL;
-    tail = NULL;
     qlen = 0;
     return;
 }
 
-// Done for now, needs testing
-void admit_rr(thread newThread){
-    if (newThread == NULL) {
-        return;
-    }
+void admit_rr(thread newThread) {
     if (head == NULL) {
-        head = (node *)malloc(sizeof(node));
-        head->theThread = newThread;
-        head->next = NULL;
-        head->index = qlen++;
-        tail = head;
+        head = newThread;
+        head->sched_one = NULL;
+        head->sched_two = NULL;
+    } else {
+        thread current = head;
+        while (current->sched_one != NULL) {
+            current = current->sched_one;
+        }
+        newThread->sched_one = NULL;      // new->next = NULL
+        newThread->sched_two = current;   // new->prev = current
+        current->sched_one = newThread;   // old_tail->next = new
     }
-    else {
-        tail->next = (node *)malloc(sizeof(node));
-        tail->next->theThread = newThread;
-        tail->next->index = qlen++;
-        tail->next->next = NULL;
-        tail = tail->next;
-    }
+    qlen++;
 }
 
 void remove_rr(thread removing) {
-    if (removing == NULL) {
+    if (removing == NULL || head == NULL) {
         return;
     }
 
@@ -68,16 +68,20 @@ void remove_rr(thread removing) {
         }
         current = current->next;
     }
+    qlen--;
     return;
 }
 
 thread next_rr(void) {
-    if (head == NULL || qlen == 0) {
-        return NULL;
+    if (next == NULL) {
+        next = head;
+    } else {
+        next = next->sched_one;
+        if (next == NULL) {
+            next = head;
+        }
     }
-    thread nextThread = head->theThread;
-    head = head->next;
-    return nextThread;
+    return next;
 }
 
 int qlen_rr(void) {
