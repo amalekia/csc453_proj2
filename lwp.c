@@ -6,7 +6,6 @@
 #include <sys/mman.h>
 #include "lwp.h"
 #include "rr.h"
-#include "queue.h"
 
 int thread_count = 0;
 

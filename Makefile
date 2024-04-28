@@ -46,10 +46,10 @@ randomsnakes.o: lwp.h snakes.h
 numbermain.o: lwp.h
 
 libLWP.a: lwp.c rr.c util.c
-	gcc -c -g rr.c util.c lwp.c magic64.S queue.c
-	ar r libLWP.a util.o lwp.o rr.o magic64.o queue.o
-	rm lwp.o queue.o
+	gcc -c -g rr.c util.c lwp.c magic64.S
+	ar r libLWP.a util.o lwp.o rr.o magic64.o
+	rm lwp.o
 
 submission: lwp.c rr.c util.c Makefile README
-	tar -cf project2_submission.tar lwp.c rr.c queue.h queue.c Makefile README
+	tar -cf project2_submission.tar lwp.c rr.c Makefile README
 	gzip project2_submission.tar
