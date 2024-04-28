@@ -166,9 +166,6 @@ extern tid_t lwp_create(lwpfun function, void *argument) {
     //assign these when you know all locals and stuff is put on stack
     new_thread->state.rsp = (unsigned long)(stack - 3); //stack pointer
     new_thread->state.rbp = (unsigned long)(stack - 3); //base pointer
-    // push base pointer onto stack
-
-    //call lwp_wrap() to make funciton call and cleanup but put lwp_wrap where return address is so that it will trick program and run that
 
     //admit the new thread to the scheduler
     CurrentScheduler->admit(new_thread);
@@ -276,4 +273,19 @@ extern scheduler lwp_get_scheduler(void) {
 
 extern thread tid2thread(tid_t tid) {
     //maps a thread id to a context
+    threadNode *temp = terminatedHead;
+    while (temp != NULL) {
+        if (temp->theThread->tid == tid) {
+            return temp->theThread;
+        }
+        temp = temp->next;
+    }
+    temp = waitingHead;
+    while (temp != NULL) {
+        if (temp->theThread->tid == tid) {
+            return temp->theThread;
+        }
+        temp = temp->next;
+    }
+    return NULL;
 }
