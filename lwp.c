@@ -6,19 +6,92 @@
 #include <sys/mman.h>
 #include "lwp.h"
 #include "rr.h"
-#include "queue.h"
 
 int thread_count = 0;
 
-threadNode *terminatedHead;
-threadNode *terminatedTail;
-threadNode *waitingHead;
-threadNode *waitingTail;
-
 thread current_thread;
+thread terminated_queue;
+thread waiting_queue;
 
 struct scheduler rr_publish = {init_rr, shutdown_rr, admit_rr, remove_rr, next_rr, qlen_rr};
 scheduler CurrentScheduler = &rr_publish;
+
+void add_terminated(thread newThread) {
+    if (terminated_queue == NULL) {
+        terminated_queue = newThread;
+        terminated_queue->lib_one = NULL;
+    }
+    else {
+        thread current = terminated_queue;
+        while (current->lib_one != NULL) {
+            current = current->lib_one;
+        }
+        newThread->lib_one = NULL;
+        current->lib_one = newThread;
+    }
+}
+
+void add_waiter(thread newThread) {
+    if (waiting_queue == NULL) {
+        waiting_queue = newThread;
+        waiting_queue->lib_one = NULL;
+    }
+    else {
+        thread current = waiting_queue;
+        while (current->lib_one != NULL) {
+            current = current->lib_one;
+        }
+        newThread->lib_one = NULL;
+        current->lib_one = newThread;
+    }
+}
+
+void remove_terminated(thread removing) {
+    if (terminated_queue == NULL || removing == NULL) {
+        return;
+    }
+
+    if (terminated_queue == removing) {
+        terminated_queue = removing->lib_one;
+        return;
+    }
+
+    thread current = terminated_queue;
+    thread prev;
+    while (current != removing && current != NULL) {
+        prev = current;
+        current = current->lib_one;
+    }
+
+    if (current == NULL) {
+        return;
+    }
+    prev->lib_one = current->lib_one;
+}
+
+void remove_waiting(thread removing) {
+    if (waiting_queue == NULL || removing == NULL) {
+        return;
+    }
+
+    if (waiting_queue == removing) {
+        waiting_queue = removing->lib_one;
+        return;
+    }
+
+    thread current = waiting_queue;
+    thread prev;
+    while (current != removing && current != NULL) {
+        prev = current;
+        current = current->lib_one;
+    }
+
+    if (current == NULL) {
+        return;
+    }
+
+    prev->lib_one = current->lib_one;
+}
 
 extern void lwp_exit(int exitval) {
     //terminates calling thread and switches to another thread if any
@@ -26,18 +99,13 @@ extern void lwp_exit(int exitval) {
     unsigned int exit_status = MKTERMSTAT(LWP_TERM, exitval);
     current_thread->status = exit_status;
 
-    if (LWPTERMINATED(current_thread->status)) {
-        CurrentScheduler->remove(current_thread);
-        enqueue(terminatedHead, terminatedTail, current_thread); // add to terminated queue
-    } else {
-        CurrentScheduler->remove(current_thread);
-        enqueue(waitingHead, waitingTail, current_thread);
-    }
+    CurrentScheduler->remove(current_thread);
+    add_terminated(current_thread);
 
-    // if something is waiting, move back to scheduler 
-    if (waitingHead != NULL) {
-        thread waiter = dequeue(waitingHead, waitingTail);
-        CurrentScheduler->admit(waiter);
+    // if something is waiting, move it back to the scheduler 
+    if (waiting_queue != NULL) {
+        waiting_queue->exited = terminated_queue;
+        CurrentScheduler->admit(waiting_queue);
     }
 
     // yield will reassign current_thread
@@ -113,13 +181,15 @@ extern void lwp_start(void) {
     //thread is selected by the scheduler
 
     thread start_thread = (thread)malloc(sizeof(context));
-    start_thread->stack = NULL; //?
+    start_thread->stack = NULL;
     start_thread->tid = 0;
     start_thread->lib_one = NULL;
     start_thread->lib_two = NULL;
     start_thread->status = LWP_LIVE;
     CurrentScheduler->admit(start_thread);
     current_thread = start_thread;
+    waiting_queue = NULL;
+    terminated_queue = NULL;
     lwp_yield();
 }
 
@@ -133,13 +203,8 @@ extern void lwp_yield(void) {
         exit(prev_thread->status);
     }
 
-    // the last thread is the original thread - good to exit
-    if (prev_thread == current_thread) {
-        return;
-    }
-
     // void swap_rfiles(rfile *old, rfile *new)
-    swap_rfiles(&prev_thread->state, &current_thread->state); // crash here
+    swap_rfiles(&prev_thread->state, &current_thread->state);
 }
 
 extern tid_t lwp_gettid(void) {
@@ -154,14 +219,31 @@ extern tid_t lwp_gettid(void) {
 
 extern tid_t lwp_wait(int *status) {
     //waits for the thread with the given id to terminate
-    //all memory freeing happens here - every thread must be waited on
 
-    if (terminatedHead == NULL) { // no terminated threads
+    if (CurrentScheduler->qlen() <= 1){
+        return NO_THREAD;
+    }
+
+    if (terminated_queue == NULL) { // no terminated threads
         CurrentScheduler->remove(current_thread);
-        enqueue(waitingHead, waitingTail, current_thread);
+        add_waiter(current_thread);
+        lwp_yield();
+
+        thread terminated_node = current_thread->exited;
+        remove_terminated(terminated_queue);
+        remove_waiting(current_thread);
+        if (terminated_node != NULL) {
+            if (status != NULL) {
+                *status = terminated_node->status;
+            }
+            tid_t ret_val = terminated_node->tid;
+            free(terminated_node);
+            return ret_val;
+        }
     }
     else {
-        thread firstTerminated = dequeue(terminatedHead, terminatedTail);
+        thread firstTerminated = terminated_queue;
+        remove_terminated(terminated_queue);
         if (status != NULL) {
             *status = firstTerminated->status;
         }
