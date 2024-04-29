@@ -271,21 +271,21 @@ extern scheduler lwp_get_scheduler(void) {
     return CurrentScheduler;
 }
 
-// extern thread tid2thread(tid_t tid) {
-//     //maps a thread id to a context
-//     thread temp = terminated_queue;
-//     while (temp != NULL) {
-//         if (temp->tid == tid) {
-//             return temp;
-//         }
-//         temp = temp->lib_one;
-//     }
-//     temp = waiting_queue;
-//     while (temp != NULL) {
-//         if (temp->theThread->tid == tid) {
-//             return temp->theThread;
-//         }
-//         temp = temp->next;
-//     }
-//     return NULL;
-// }
+extern thread tid2thread(tid_t tid) {
+    //maps a thread id to a context
+    thread temp = terminated_queue;
+    while (temp != NULL) {
+        if (temp->tid == tid) {
+            return temp;
+        }
+        temp = temp->lib_one;
+    }
+    temp = waiting_queue;
+    while (temp != NULL) {
+        if (temp->tid == tid) {
+            return temp;
+        }
+        temp = temp->lib_one;
+    }
+    return NULL;
+}
