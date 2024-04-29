@@ -180,7 +180,7 @@ extern void lwp_start(void) {
     //converts the calling thread into a LWP and lwp_yield()s to whichever 
     //thread is selected by the scheduler
 
-    thread start_thread = (thread)malloc(sizeof(context));
+    thread start_thread = (thread)mmap(NULL, sizeof(struct threadinfo_st), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     start_thread->stack = NULL;
     start_thread->tid = 0;
     start_thread->lib_one = NULL;
@@ -271,21 +271,21 @@ extern scheduler lwp_get_scheduler(void) {
     return CurrentScheduler;
 }
 
-extern thread tid2thread(tid_t tid) {
-    //maps a thread id to a context
-    threadNode *temp = terminatedHead;
-    while (temp != NULL) {
-        if (temp->theThread->tid == tid) {
-            return temp->theThread;
-        }
-        temp = temp->next;
-    }
-    temp = waitingHead;
-    while (temp != NULL) {
-        if (temp->theThread->tid == tid) {
-            return temp->theThread;
-        }
-        temp = temp->next;
-    }
-    return NULL;
-}
+// extern thread tid2thread(tid_t tid) {
+//     //maps a thread id to a context
+//     thread temp = terminated_queue;
+//     while (temp != NULL) {
+//         if (temp->tid == tid) {
+//             return temp;
+//         }
+//         temp = temp->lib_one;
+//     }
+//     temp = waiting_queue;
+//     while (temp != NULL) {
+//         if (temp->theThread->tid == tid) {
+//             return temp->theThread;
+//         }
+//         temp = temp->next;
+//     }
+//     return NULL;
+// }
