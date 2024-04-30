@@ -51,5 +51,5 @@ libLWP.a: lwp.c rr.c util.c
 	rm lwp.o
 
 submission: lwp.c rr.c util.c Makefile
-	tar -cf project2_submission.tar lwp.c rr.c Makefile README.txt
+	tar -cf project2_submission.tar lwp.c lwp.h rr.c rr.h Makefile README.txt
 	gzip project2_submission.tar
