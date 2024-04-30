@@ -13,7 +13,7 @@ thread current_thread;
 thread terminated_queue;
 thread waiting_queue;
 
-struct scheduler rr_publish = {init_rr, shutdown_rr, admit_rr, remove_rr, next_rr, qlen_rr};
+struct scheduler rr_publish = {init_rr, NULL, admit_rr, remove_rr, next_rr, qlen_rr};
 scheduler CurrentScheduler = &rr_publish;
 
 void add_terminated(thread newThread) {
@@ -258,12 +258,25 @@ extern void lwp_set_scheduler(scheduler new_scheduler) {
     if (new_scheduler == NULL) {
         return;
     }
-    CurrentScheduler = new_scheduler;
 
     // confirm that current scheduler has non NULL init func before calling
-    if (CurrentScheduler->init) {
-        CurrentScheduler->init();
+    if (new_scheduler->init) {
+        new_scheduler->init();
     }
+
+    thread old_cur = current_thread;
+    thread temp;
+    while (temp = CurrentScheduler->next()) {
+        new_scheduler->admit(temp);
+        CurrentScheduler->remove(temp);
+    }
+
+    if (CurrentScheduler->shutdown) {
+        CurrentScheduler->shutdown();
+    }
+
+    current_thread = old_cur;
+    CurrentScheduler = new_scheduler;
 }
 
 extern scheduler lwp_get_scheduler(void) {
