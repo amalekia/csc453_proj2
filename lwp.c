@@ -13,7 +13,7 @@ thread current_thread;
 thread terminated_queue;
 thread waiting_queue;
 
-struct scheduler rr_publish = {init_rr, shutdown_rr, admit_rr, remove_rr, next_rr, qlen_rr};
+struct scheduler rr_publish = {init_rr, NULL, admit_rr, remove_rr, next_rr, qlen_rr};
 scheduler CurrentScheduler = &rr_publish;
 
 void add_terminated(thread newThread) {

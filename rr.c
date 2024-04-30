@@ -12,19 +12,6 @@ void init_rr(void) {
     qlen = 0;
 }
 
-void shutdown_rr(void) {
-    thread tmp;
-    thread current = head;
-    while (current->sched_one != NULL) {
-        tmp = current->sched_one;
-        free(current);
-        current = tmp;
-    }
-    head = NULL;
-    qlen = 0;
-    return;
-}
-
 void admit_rr(thread newThread) {
     if (head == NULL) {
         head = newThread;
